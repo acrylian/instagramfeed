@@ -2,21 +2,30 @@
 /**
  * A simple ZenphotoCMS plugin to display the latest public images from an Instagram account
  * 
- * Set the plugin option with your instagram user name
- * Add `instagramFeed::printFreed(4);` to your theme where you want to display it.
+ * It does not use the API and does not require any login or tokens. It only works with public content.
+ * 
+ * ## Installation
+ * 
+ * Place the file `instagramfeed.php` into your `/plugins` folder, enable it and set the plugin options. 
+ * 
+ * Add `instragramFeed::printFreed(4);` to your theme where you want to display the images.
+ * 
+ * Note the plugin does just print an unordered list with linked thumbs and does not provide any default CSS styling. 
+ * 
+ * ## Customize the display
  * 
  * To customize the feed output create child class within your theme's function.php or a custom pugin like this:
  * 
- *     class myInstagramFfeed extends instagramFeed {
+ *     class myInstagramFeed extends instagramFeed {
  *	
  *		   static function printFeed($number = 4, $size = 1, $class = 'instagramfeed') {
- *			   // add your customized output here
+ *					$content = flickrFeed::getFeed();
+ *					if ($content) {
+ *						// add your customized output here
+ *				  }
  *		   }
  *
  *     }
- * 
- * 
- * Note the plugin does just print an unordered list with linked thumbs and does not provide any default CSS styling. 
  * 
  * @author Malte Müller (acrylian)
  * @licence GPL v3 or later
@@ -61,24 +70,26 @@ class instagramFeed {
 	 * @return array
 	 */
 	static function getFeed() {
-		$user = getOption('instagramfeed_user');
-		$feedurl = 'https://www.instagram.com/' . $user . '/?__a=1';
-		$cache = instagramFeed::getCache();
-		$lastmod = instagramFeed::getLastMod();
-		$cachetime = intval(getOption('instagramfeed_cachetime'));
-		if (empty($cache) || (time() - $lastmod) > $cachetime) {
-			$options = array(
-					CURLOPT_HTTPGET => true,
-					CURLOPT_RETURNTRANSFER => true,
-					CURLOPT_AUTOREFERER => true
-			);
-			$data = curlRequest($feedurl, $options);
-			$content = json_decode($data);
-			instagramFeed::saveCache($content);
-			instagramFeed::saveLastMod(time());
-			return $content;
-		} else {
-			return $cache;
+		$user = trim(getOption('instagramfeed_user'));
+		if ($user) {
+			$feedurl = 'https://www.instagram.com/' . $user . '/?__a=1';
+			$cache = instagramFeed::getCache();
+			$lastmod = instagramFeed::getLastMod();
+			$cachetime = intval(getOption('instagramfeed_cachetime'));
+			if (empty($cache) || (time() - $lastmod) > $cachetime) {
+				$options = array(
+						CURLOPT_HTTPGET => true,
+						CURLOPT_RETURNTRANSFER => true,
+						CURLOPT_AUTOREFERER => true
+				);
+				$data = curlRequest($feedurl, $options);
+				$content = json_decode($data);
+				instagramFeed::saveCache($content);
+				instagramFeed::saveLastMod(time());
+				return $content;
+			} else {
+				return $cache;
+			}
 		}
 		return array();
 	}
