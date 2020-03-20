@@ -19,7 +19,7 @@
  *     class myInstagramFeed extends instagramFeed {
  *	
  *		   static function printFeed($number = 4, $size = 1, $class = 'instagramfeed') {
- *					$content = flickrFeed::getFeed();
+ *					$content = instagramFeed::getFeed();
  *					if ($content) {
  *						// add your customized output here
  *				  }

@@ -5,7 +5,7 @@ It does not use the API and does not require any login or tokens. It only works 
 
 ## Installation
 
-Place the file `instagramfeed.php` into your `/plugins` folder, enable it and set the plugin options. 
+Place the file `instagramfeed.php` to your `/plugins` folder, enable it and set the plugin options. 
 
 Add `instagramFeed::printFeed(4);` to your theme where you want to display the images.
 
@@ -18,7 +18,7 @@ To customize the feed output create child class within your theme's function.php
     class myInstagramFeed extends instagramFeed {
 
       static function printFeed($number = 4, $size = 1, $class = 'instagramfeed') {
-        $content = flickrFeed::getFeed();
+        $content = instagramFeed::getFeed();
         if ($content) {
           // add your customized output here
         }
