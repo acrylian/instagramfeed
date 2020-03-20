@@ -45,7 +45,7 @@ class instagramFeedOptions {
 	function getOptionsSupported() {
 		return array(
 				gettext('Instagram user') => array(
-						'key' => 'instragramfeed_user',
+						'key' => 'instagramfeed_user',
 						'type' => OPTION_TYPE_TEXTBOX,
 						'order' => 1,
 						'desc' => gettext('The user name of the Instagram account to fetch')),
@@ -103,9 +103,6 @@ class instagramFeed {
 	 */
 	static function printFeed($number = 4, $size = 1, $class = 'instagramfeed') {
 		$content = instagramFeed::getFeed();
-		if (!in_array($size, array(1, 2, 3, 4, 5, 'full'))) {
-			$size = 1;
-		}
 		$count = '';
 		if ($content) {
 			$posts = instagramFeed::getPosts($content);
@@ -124,9 +121,6 @@ class instagramFeed {
 					$img = instagramFeed::getPostFullImage($post);
 				} else {
 					$thumbs = $post->node->thumbnail_resources;
-					if (!array_key_exists($size, $thumbs)) {
-						$size = 0;
-					}
 					$img = instagramFeed::getPostThumb($post, $size);
 				}
 				?>
