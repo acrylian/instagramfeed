@@ -149,7 +149,7 @@ class instagramFeed {
 	}
 
 	/**
-	 * Gets the URL to the instragram account of the user
+	 * Gets the URL to the instagram account of the user
 	 * 
 	 * @param type $username
 	 * @return string
@@ -160,7 +160,7 @@ class instagramFeed {
 	}
 
 	/**
-	 * Returns an array with object of the instramm posts.
+	 * Returns an array with object of the instagram posts.
 	 * @param array $content
 	 * @return array
 	 */
@@ -248,7 +248,7 @@ class instagramFeedPost {
 	 * Returns the post location 
 	 * @return string
 	 */
-	function getPostLocation() {
+	function getLocation() {
 		if ($this->post && !empty($this->post->node->location->name)) {
 			return $this->post->node->location->name;
 		}
@@ -258,7 +258,7 @@ class instagramFeedPost {
 	 * Returns the post description/text
 	 * @return string
 	 */
-	function getPostDescription() {
+	function getDescription() {
 		if ($this->post && !empty($this->post->node->edge_media_to_caption->edges)) {
 			return $this->post->node->edge_media_to_caption->edges[0]->node->text;
 		}
@@ -268,7 +268,7 @@ class instagramFeedPost {
 	 * Returns the date formatted following Zenphoto's settings
 	 * @return string
 	 */
-	function getPostDate() {
+	function getDate() {
 		if ($this->post) {
 			return zpFormattedDate(DATE_FORMAT, $this->post->node->taken_at_timestamp);
 		}
@@ -278,7 +278,7 @@ class instagramFeedPost {
 	 * Returns an array with "url", "width" and "height" of the full image
 	 * @return array
 	 */
-  function getPostFullImage() {
+  function getFullImage() {
 		$array = array();
 		if ($this->post) {
 			return array(
@@ -295,7 +295,7 @@ class instagramFeedPost {
 	 * @param int $size The size to display (0-4 = 150x150, 240x240, 320x320, 480x480, 640x640)
 	 * @return array
 	 */
-	function getPostThumb($size = 0) {
+	function getThumb($size = 0) {
 		$array = array();
 		if ($this->post) {
 			$thumbs = $this->post->node->thumbnail_resources;
