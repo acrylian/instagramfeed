@@ -8,7 +8,7 @@
  * 
  * Place the file `instagramfeed.php` into your `/plugins` folder, enable it and set the plugin options. 
  * 
- * Add `instagramFeed::printFreed(4);` to your theme where you want to display the images.
+ * Add `instagramFeed::printFeed(4);` to your theme where you want to display the images.
  * 
  * Note the plugin does just print an unordered list with linked thumbs and does not provide any default CSS styling. 
  * 
@@ -238,10 +238,11 @@ class instagramFeedPost {
 	/**
 	 * @param Object $post Post object from the feed as fetched by class instragramFeed::getPosts()
 	 */
-	function _construct(Object $post) {
+	function __construct(Object $post) {
 		if (is_object($post)) {
 			$this->post = $post;
 		}
+		
 	}
 	
 	/**
