@@ -240,7 +240,17 @@ class instagramFeedPost {
 	 */
 	function _construct(Object $post) {
 		if (is_object($post)) {
-			$this->post = $entry;
+			$this->post = $post;
+		}
+	}
+	
+	/**
+	 * Returns the instragram post page using the "shortcode" url from the feeed
+	 * @return string
+	 */
+	function getURL() {
+		if ($this->post) {
+			return 'https://www.instagram.com/p/' . $this->post->node->shortcode;
 		}
 	}
 
