@@ -112,7 +112,7 @@ class instagramFeed {
 				$count = '';
 				foreach ($posts as $post) {
 					$count++;
-					$entry = new instagramFeedPost();
+					$entry = new instagramFeedPost($post);
 					$posturl = $entry->getURL();
 					$location = $entry->getLocation();
 					$text = $entry->getDescription();
