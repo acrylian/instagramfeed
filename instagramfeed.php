@@ -17,13 +17,13 @@
  * To customize the feed output create child class within your theme's function.php or a custom pugin like this:
  * 
  *     class myInstagramFeed extends instagramFeed {
- *	
- *		   static function printFeed($number = 4, $size = 1, $class = 'instagramfeed') {
- *					$content = instagramFeed::getFeed();
- *					if ($content) {
- *						// add your customized output here
- *				  }
- *		   }
+ * 	
+ * 		   static function printFeed($number = 4, $size = 1, $class = 'instagramfeed') {
+ * 					$content = instagramFeed::getFeed();
+ * 					if ($content) {
+ * 						// add your customized output here
+ * 				  }
+ * 		   }
  *
  *     }
  * 
@@ -108,25 +108,33 @@ class instagramFeed {
 			$posts = instagramFeed::getPosts($content);
 			?>
 			<ul class="<?php echo html_encode($class); ?>">
-			<?php
-			$count = '';
-			foreach ($posts as $post) {
-				$count++;
-				$posturl = instagramFeed::getPostURL($post);
-				$location = instagramFeed::getPostLocation($post);
-				$text = instagramFeed::getPostDescription($post);
-				$date = instagramFeed::getPostDate($post);
-				;
-				if ($size == 'full') {
-					$img = instagramFeed::getPostFullImage($post);
-				} else {
-					$thumbs = $post->node->thumbnail_resources;
-					$img = instagramFeed::getPostThumb($post, $size);
-				}
-				?>
+				<?php
+				$count = '';
+				foreach ($posts as $post) {
+					$count++;
+					$entry = new instagramFeedPost();
+					$posturl = $entry->getURL();
+					$location = $entry->getLocation();
+					$text = $entry->getDescription();
+					$date = $entry->getDate();
+					$title_attr = $location . $date;
+					$img_url = '';
+					$img_width = '';
+					$img_height = '';
+					if ($size == 'full') {
+						$img = $entry->getFullImage();
+					} else {
+						$img = $entry->getThumb($size);
+					}
+					if($img) {
+						$img_url = $img['url'];
+						$img_width = $img['width'];
+						$img_height = $img['height'];
+					}
+					?>
 					<li>
-						<a href="<?php echo html_encode($posturl); ?>" title="<?php echo html_encode($location . $date); ?>" target="_blank" rel="noopener">
-							<img src="<?php echo html_encode($img['url']); ?>" alt="<?php echo html_encode($text); ?>" width="<?php echo $img['width']; ?>" height="<?php echo $img['height']; ?>">
+						<a href="<?php echo html_encode($posturl); ?>" title="<?php echo html_encode($title_attr); ?>" target="_blank" rel="noopener">
+							<img src="<?php echo html_encode($img_url); ?>" alt="<?php echo html_encode($text); ?>" width="<?php echo $img_width; ?>" height="<?php echo $img_height; ?>">
 						</a>
 					</li>
 					<?php
@@ -136,92 +144,161 @@ class instagramFeed {
 				}
 				?>
 			</ul>
-				<?php
-			}
+			<?php
 		}
+	}
 
-		/**
-		 * Gets the URL to the instragram account of the user
-		 * 
-		 * @param type $username
-		 * @return string
-		 */
-		static function getUserURL() {
-			$user = getOption('instagramfeed_user');
-			return 'https://www.instagram.com/' . $user;
-		}
-		
-		/**
-		 * Returns an array with object of the instramm posts.
-		 * @param array $content
-		 * @return array
-		 */
-		static function getPosts($content) {
-			if($content) {
-				return $content->graphql->user->edge_owner_to_timeline_media->edges;
-			}
-			return array();
-		}
+	/**
+	 * Gets the URL to the instragram account of the user
+	 * 
+	 * @param type $username
+	 * @return string
+	 */
+	static function getUserURL() {
+		$user = getOption('instagramfeed_user');
+		return 'https://www.instagram.com/' . $user;
+	}
 
-		/**
-		 * Returns the instragram post page using the "shortcode" url from the feeed
-		 * @param object $post Post object
-		 * @return string
-		 */
-		static function getPostURL($post) {
-			return 'https://www.instagram.com/p/' . $post->node->shortcode;
+	/**
+	 * Returns an array with object of the instramm posts.
+	 * @param array $content
+	 * @return array
+	 */
+	static function getPosts($content) {
+		if ($content) {
+			return $content->graphql->user->edge_owner_to_timeline_media->edges;
 		}
+		return array();
+	}
 
-		/**
-		 * Returns the post location 
-		 * @param object $post
-		 * @return string
-		 */
-		static function getPostLocation($post) {
-			if (!empty($post->node->location->name)) {
-				return $post->node->location->name;
-			}
+	/**
+	 * Gets the content from cache if available
+	 * @return array
+	 */
+	static function getCache() {
+		$cache = query_single_row('SELECT data FROM ' . prefix('plugin_storage') . ' WHERE `type` = "instagramfeed" AND `aux` = "instagramfeed_cache"');
+		if ($cache) {
+			return json_decode(unserialize($cache['data']));
 		}
+		return false;
+	}
 
-		/**
-		 * Returns the post description/text
-		 * @param object $post
-		 * @return string
-		 */
-		static function getPostDescription($post) {
-			return $post->node->edge_media_to_caption->edges[0]->node->text;
+	/**
+	 * Stores the content in cache
+	 * @param array $content
+	 */
+	static function saveCache($content) {
+		$hascache = instagramfeed::getCache();
+		$cache = serialize(json_encode($content));
+		if ($hascache) {
+			$sql = 'UPDATE ' . prefix('plugin_storage') . ' SET `data`=' . db_quote($cache) . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_cache"';
+		} else {
+			$sql = 'INSERT INTO ' . prefix('plugin_storage') . ' (`type`,`aux`,`data`) VALUES ("instagramfeed", "instagramfeed_cache",' . db_quote($cache) . ')';
 		}
+		query($sql);
+	}
 
-		/**
-		 * Returns the date formatted following Zenphoto's settings
-		 * @param object $post
-		 * @return string
-		 */
-		static function getPostDate($post) {
-			return zpFormattedDate(DATE_FORMAT, $post->node->taken_at_timestamp);
+	/**
+	 * Returns the time of the last caching
+	 * @return int
+	 */
+	static function getLastMod() {
+		$lastmod = query_single_row('SELECT data FROM ' . prefix('plugin_storage') . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_lastmod"');
+		if ($lastmod) {
+			return $lastmod['data'];
 		}
+		return false;
+	}
 
-		/**
-		 * 	Returns an array with "url", "width" and "height" of the full image
-		 * @param object $post
-		 * @return array
-		 */
-		static function getPostFullImage($post) {
+	/**
+	 * Sets the last modification time
+	 * 
+	 * @param int $lastmod Time (time()) of the last caching
+	 */
+	static function saveLastmod() {
+		$haslastmod = instagramfeed::getLastMod();
+		$lastmod = time();
+		if ($haslastmod) {
+			$sql = 'UPDATE ' . prefix('plugin_storage') . ' SET `data` = ' . $lastmod . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_lastmod"';
+		} else {
+			$sql = 'INSERT INTO ' . prefix('plugin_storage') . ' (`type`,`aux`,`data`) VALUES ("instagramfeed", "instagramfeed_lastmod",' . $lastmod . ')';
+		}
+		query($sql);
+	}
+
+}
+
+/**
+ * Fetches data from a instagram feed post entry
+ */
+class instagramFeedPost {
+
+	private $post = null;
+
+	/**
+	 * @param Object $post Post object from the feed as fetched by class instragramFeed::getPosts()
+	 */
+	function _construct(Object $post) {
+		if (is_object($post)) {
+			$this->post = $entry;
+		}
+	}
+
+	/**
+	 * Returns the post location 
+	 * @return string
+	 */
+	function getPostLocation() {
+		if ($this->post && !empty($this->post->node->location->name)) {
+			return $this->post->node->location->name;
+		}
+	}
+
+	/**
+	 * Returns the post description/text
+	 * @return string
+	 */
+	function getPostDescription() {
+		if ($this->post && !empty($this->post->node->edge_media_to_caption->edges)) {
+			return $this->post->node->edge_media_to_caption->edges[0]->node->text;
+		}
+	}
+
+	/**
+	 * Returns the date formatted following Zenphoto's settings
+	 * @return string
+	 */
+	function getPostDate() {
+		if ($this->post) {
+			return zpFormattedDate(DATE_FORMAT, $this->post->node->taken_at_timestamp);
+		}
+	}
+
+	/**
+	 * Returns an array with "url", "width" and "height" of the full image
+	 * @return array
+	 */
+  function getPostFullImage() {
+		$array = array();
+		if ($this->post) {
 			return array(
-					'url' => $post->node->display_url,
-					'width' => $post->node->dimensions->width,
-					'height' => $post->node->dimensions->height
+					'url' => $this->post->node->display_url,
+					'width' => $this->post->node->dimensions->width,
+					'height' => $this->post->node->dimensions->height
 			);
 		}
+		return $array;
+	}
 
-		/**
-		 * Returns an array with "url", "width" and "height" of the thumb
-		 * @param object $post
-		 * @param int $size The size to display (0-4 = 150x150, 240x240, 320x320, 480x480, 640x640)
-		 * @return array
-		 */
-		static function getPostThumb($post, $size = 0) {
-			$thumbs = $post->node->thumbnail_resources;
+	/**
+	 * Returns an array with "url", "width" and "height" of the thumb
+	 * @param int $size The size to display (0-4 = 150x150, 240x240, 320x320, 480x480, 640x640)
+	 * @return array
+	 */
+	function getPostThumb($size = 0) {
+		$array = array();
+		if ($this->post) {
+			$thumbs = $this->post->node->thumbnail_resources;
 			if (!array_key_exists($size, $thumbs)) {
 				$size = 0;
 			}
@@ -231,61 +308,7 @@ class instagramFeed {
 					'height' => $thumbs[$size]->config_height
 			);
 		}
-
-		/**
-		 * Gets the content from cache if available
-		 * @return array
-		 */
-		static function getCache() {
-			$cache = query_single_row('SELECT data FROM ' . prefix('plugin_storage') . ' WHERE `type` = "instagramfeed" AND `aux` = "instagramfeed_cache"');
-			if ($cache) {
-				return json_decode(unserialize($cache['data']));
-			}
-			return false;
-		}
-
-		/**
-		 * Stores the content in cache
-		 * @param array $content
-		 */
-		static function saveCache($content) {
-			$hascache = instagramfeed::getCache();
-			$cache = serialize(json_encode($content));
-			if ($hascache) {
-				$sql = 'UPDATE ' . prefix('plugin_storage') . ' SET `data`=' . db_quote($cache) . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_cache"';
-			} else {
-				$sql = 'INSERT INTO ' . prefix('plugin_storage') . ' (`type`,`aux`,`data`) VALUES ("instagramfeed", "instagramfeed_cache",' . db_quote($cache) . ')';
-			}
-			query($sql);
-		}
-
-		/**
-		 * Returns the time of the last caching
-		 * @return int
-		 */
-		static function getLastMod() {
-			$lastmod = query_single_row('SELECT data FROM ' . prefix('plugin_storage') . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_lastmod"');
-			if ($lastmod) {
-				return $lastmod['data'];
-			}
-			return false;
-		}
-
-		/**
-		 * Sets the last modification time
-		 * 
-		 * @param int $lastmod Time (time()) of the last caching
-		 */
-		static function saveLastmod() {
-			$haslastmod = instagramfeed::getLastMod();
-			$lastmod = time();
-			if ($haslastmod) {
-				$sql = 'UPDATE ' . prefix('plugin_storage') . ' SET `data` = ' . $lastmod . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_lastmod"';
-			} else {
-				$sql = 'INSERT INTO ' . prefix('plugin_storage') . ' (`type`,`aux`,`data`) VALUES ("instagramfeed", "instagramfeed_lastmod",' . $lastmod . ')';
-			}
-			query($sql);
-		}
-
+		return $array;
 	}
-	
+
+}
