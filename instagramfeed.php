@@ -8,7 +8,7 @@
  * 
  * Place the file `instagramfeed.php` into your `/plugins` folder, enable it and set the plugin options. 
  * 
- * Add `instagramFeed::printFeed(4);` to your theme where you want to display the images.
+ * Add `instragramFeed::printFreed(4);` to your theme where you want to display the images.
  * 
  * Note the plugin does just print an unordered list with linked thumbs and does not provide any default CSS styling. 
  * 
@@ -19,7 +19,7 @@
  *     class myInstagramFeed extends instagramFeed {
  * 	
  * 		   static function printFeed($number = 4, $size = 1, $class = 'instagramfeed') {
- * 					$content = instagramFeed::getFeed();
+ * 					$content = flickrFeed::getFeed();
  * 					if ($content) {
  * 						// add your customized output here
  * 				  }
@@ -32,7 +32,8 @@
  */
 $plugin_description = gettext('A simple plugin to display the latest public images from a Instagram account');
 $plugin_author = 'Malte Müller (acrylian)';
-$plugin_version = '1.0';
+$plugin_version = '1.0.1';
+$plugin_url = 'https/github.com/acrylian/instagramfeed';
 $plugin_category = gettext('Media');
 $option_interface = 'instagramFeedOptions';
 
@@ -53,8 +54,22 @@ class instagramFeedOptions {
 						'key' => 'instagramfeed_cachetime',
 						'type' => OPTION_TYPE_TEXTBOX,
 						'order' => 1,
-						'desc' => gettext('The time in seconds the cache is kept until the data is fetched freshly'))
+						'desc' => gettext('The time in seconds the cache is kept until the data is fetched freshly')),
+				gettext('Clear cache') => array(
+						'key' => 'instagramfeed_cacheclear',
+						'type' => OPTION_TYPE_CHECKBOX,
+						'order' => 1,
+						'desc' => gettext('Check and save options to clear the cache on force.'))
 		);
+	}
+
+	function handleOptionSave($themename, $themealbum) {
+		if (isset($_POST['instagramfeed_cacheclear'])) {
+			instagramFeed::saveCache('');
+			instagramFeed::saveLastmod();
+			setOption('instagramfeed_cacheclear', false);
+		}
+		return false;
 	}
 
 }
@@ -80,7 +95,10 @@ class instagramFeed {
 				$options = array(
 						CURLOPT_HTTPGET => true,
 						CURLOPT_RETURNTRANSFER => true,
-						CURLOPT_AUTOREFERER => true
+						CURLOPT_FAILONERROR => true,
+						CURLOPT_FOLLOWLOCATION => true,
+						CURLOPT_AUTOREFERER => true,
+						CURLOPT_HEADER => false
 				);
 				$data = curlRequest($feedurl, $options);
 				$content = json_decode($data);
@@ -112,29 +130,21 @@ class instagramFeed {
 				$count = '';
 				foreach ($posts as $post) {
 					$count++;
-					$entry = new instagramFeedPost($post);
-					$posturl = $entry->getURL();
-					$location = $entry->getLocation();
-					$text = $entry->getDescription();
-					$date = $entry->getDate();
-					$title_attr = $location . $date;
-					$img_url = '';
-					$img_width = '';
-					$img_height = '';
+					$posturl = instagramFeed::getPostURL($post);
+					$location = instagramFeed::getPostLocation($post);
+					$text = instagramFeed::getPostDescription($post);
+					$date = instagramFeed::getPostDate($post);
+					;
 					if ($size == 'full') {
-						$img = $entry->getFullImage();
+						$img = instagramFeed::getPostFullImage($post);
 					} else {
-						$img = $entry->getThumb($size);
-					}
-					if($img) {
-						$img_url = $img['url'];
-						$img_width = $img['width'];
-						$img_height = $img['height'];
+						$thumbs = $post->node->thumbnail_resources;
+						$img = instagramFeed::getPostThumb($post, $size);
 					}
 					?>
 					<li>
-						<a href="<?php echo html_encode($posturl); ?>" title="<?php echo html_encode($title_attr); ?>" target="_blank" rel="noopener">
-							<img src="<?php echo html_encode($img_url); ?>" alt="<?php echo html_encode($text); ?>" width="<?php echo $img_width; ?>" height="<?php echo $img_height; ?>">
+						<a href="<?php echo html_encode($posturl); ?>" title="<?php echo html_encode($location . $date); ?>" target="_blank" rel="noopener">
+							<img src="<?php echo html_encode($img['url']); ?>" alt="<?php echo html_encode($text); ?>" width="<?php echo $img['width']; ?>" height="<?php echo $img['height']; ?>">
 						</a>
 					</li>
 					<?php
@@ -149,7 +159,7 @@ class instagramFeed {
 	}
 
 	/**
-	 * Gets the URL to the instagram account of the user
+	 * Gets the URL to the instragram account of the user
 	 * 
 	 * @param type $username
 	 * @return string
@@ -160,7 +170,7 @@ class instagramFeed {
 	}
 
 	/**
-	 * Returns an array with object of the instagram posts.
+	 * Returns an array with object of the instramm posts.
 	 * @param array $content
 	 * @return array
 	 */
@@ -169,6 +179,75 @@ class instagramFeed {
 			return $content->graphql->user->edge_owner_to_timeline_media->edges;
 		}
 		return array();
+	}
+
+	/**
+	 * Returns the instragram post page using the "shortcode" url from the feeed
+	 * @param object $post Post object
+	 * @return string
+	 */
+	static function getPostURL($post) {
+		return 'https://www.instagram.com/p/' . $post->node->shortcode;
+	}
+
+	/**
+	 * Returns the post location 
+	 * @param object $post
+	 * @return string
+	 */
+	static function getPostLocation($post) {
+		if (!empty($post->node->location->name)) {
+			return $post->node->location->name;
+		}
+	}
+
+	/**
+	 * Returns the post description/text
+	 * @param object $post
+	 * @return string
+	 */
+	static function getPostDescription($post) {
+		return $post->node->edge_media_to_caption->edges[0]->node->text;
+	}
+
+	/**
+	 * Returns the date formatted following Zenphoto's settings
+	 * @param object $post
+	 * @return string
+	 */
+	static function getPostDate($post) {
+		return zpFormattedDate(DATE_FORMAT, $post->node->taken_at_timestamp);
+	}
+
+	/**
+	 * 	Returns an array with "url", "width" and "height" of the full image
+	 * @param object $post
+	 * @return array
+	 */
+	static function getPostFullImage($post) {
+		return array(
+				'url' => $post->node->display_url,
+				'width' => $post->node->dimensions->width,
+				'height' => $post->node->dimensions->height
+		);
+	}
+
+	/**
+	 * Returns an array with "url", "width" and "height" of the thumb
+	 * @param object $post
+	 * @param int $size The size to display (0-4 = 150x150, 240x240, 320x320, 480x480, 640x640)
+	 * @return array
+	 */
+	static function getPostThumb($post, $size = 0) {
+		$thumbs = $post->node->thumbnail_resources;
+		if (!array_key_exists($size, $thumbs)) {
+			$size = 0;
+		}
+		return array(
+				'url' => $thumbs[$size]->src,
+				'width' => $thumbs[$size]->config_width,
+				'height' => $thumbs[$size]->config_height
+		);
 	}
 
 	/**
@@ -224,102 +303,6 @@ class instagramFeed {
 			$sql = 'INSERT INTO ' . prefix('plugin_storage') . ' (`type`,`aux`,`data`) VALUES ("instagramfeed", "instagramfeed_lastmod",' . $lastmod . ')';
 		}
 		query($sql);
-	}
-
-}
-
-/**
- * Fetches data from a instagram feed post entry
- */
-class instagramFeedPost {
-
-	private $post = null;
-
-	/**
-	 * @param Object $post Post object from the feed as fetched by class instragramFeed::getPosts()
-	 */
-	function __construct(Object $post) {
-		if (is_object($post)) {
-			$this->post = $post;
-		}
-		
-	}
-	
-	/**
-	 * Returns the instragram post page using the "shortcode" url from the feeed
-	 * @return string
-	 */
-	function getURL() {
-		if ($this->post) {
-			return 'https://www.instagram.com/p/' . $this->post->node->shortcode;
-		}
-	}
-
-	/**
-	 * Returns the post location 
-	 * @return string
-	 */
-	function getLocation() {
-		if ($this->post && !empty($this->post->node->location->name)) {
-			return $this->post->node->location->name;
-		}
-	}
-
-	/**
-	 * Returns the post description/text
-	 * @return string
-	 */
-	function getDescription() {
-		if ($this->post && !empty($this->post->node->edge_media_to_caption->edges)) {
-			return $this->post->node->edge_media_to_caption->edges[0]->node->text;
-		}
-	}
-
-	/**
-	 * Returns the date formatted following Zenphoto's settings
-	 * @return string
-	 */
-	function getDate() {
-		if ($this->post) {
-			return zpFormattedDate(DATE_FORMAT, $this->post->node->taken_at_timestamp);
-		}
-	}
-
-	/**
-	 * Returns an array with "url", "width" and "height" of the full image
-	 * @return array
-	 */
-  function getFullImage() {
-		$array = array();
-		if ($this->post) {
-			return array(
-					'url' => $this->post->node->display_url,
-					'width' => $this->post->node->dimensions->width,
-					'height' => $this->post->node->dimensions->height
-			);
-		}
-		return $array;
-	}
-
-	/**
-	 * Returns an array with "url", "width" and "height" of the thumb
-	 * @param int $size The size to display (0-4 = 150x150, 240x240, 320x320, 480x480, 640x640)
-	 * @return array
-	 */
-	function getThumb($size = 0) {
-		$array = array();
-		if ($this->post) {
-			$thumbs = $this->post->node->thumbnail_resources;
-			if (!array_key_exists($size, $thumbs)) {
-				$size = 0;
-			}
-			return array(
-					'url' => $thumbs[$size]->src,
-					'width' => $thumbs[$size]->config_width,
-					'height' => $thumbs[$size]->config_height
-			);
-		}
-		return $array;
 	}
 
 }
