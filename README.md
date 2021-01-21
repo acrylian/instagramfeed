@@ -3,6 +3,8 @@ A [ZenphotoCMS](http://www.zenphoto.org) plugin to display the latest images fro
 
 It does not use the API and does not require any login or tokens. It only works with public content.
 
+**Note: This plugin uses as more or less unofficial way to get the data and does not always work reliable. It was once made as a quick solution without getting into the hassles of the official API. There is no intention to rework this plugin but contributions are welcome**
+
 ## Installation
 
 Place the file `instagramfeed.php` to your `/plugins` folder, enable it and set the plugin options. 
