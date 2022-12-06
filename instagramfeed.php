@@ -32,7 +32,7 @@
  */
 $plugin_description = gettext('A simple plugin to display the latest public images from a Instagram account');
 $plugin_author = 'Malte Müller (acrylian)';
-$plugin_version = '1.0.1';
+$plugin_version = '1.1';
 $plugin_url = 'https/github.com/acrylian/instagramfeed';
 $plugin_category = gettext('Media');
 $option_interface = 'instagramFeedOptions';
@@ -255,7 +255,8 @@ class instagramFeed {
 	 * @return array
 	 */
 	static function getCache() {
-		$cache = query_single_row('SELECT data FROM ' . prefix('plugin_storage') . ' WHERE `type` = "instagramfeed" AND `aux` = "instagramfeed_cache"');
+		global $_zp_db;
+		$cache = $_zp_db->querySingleRow('SELECT data FROM ' . $_zp_db->prefix('plugin_storage') . ' WHERE `type` = "instagramfeed" AND `aux` = "instagramfeed_cache"');
 		if ($cache) {
 			return json_decode(unserialize($cache['data']));
 		}
@@ -267,14 +268,15 @@ class instagramFeed {
 	 * @param array $content
 	 */
 	static function saveCache($content) {
+		global $_zp_db;
 		$hascache = instagramfeed::getCache();
 		$cache = serialize(json_encode($content));
 		if ($hascache) {
-			$sql = 'UPDATE ' . prefix('plugin_storage') . ' SET `data`=' . db_quote($cache) . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_cache"';
+			$sql = 'UPDATE ' . $_zp_db->prefix('plugin_storage') . ' SET `data`=' . $_zp_db->quote($cache) . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_cache"';
 		} else {
-			$sql = 'INSERT INTO ' . prefix('plugin_storage') . ' (`type`,`aux`,`data`) VALUES ("instagramfeed", "instagramfeed_cache",' . db_quote($cache) . ')';
+			$sql = 'INSERT INTO ' . $_zp_db->prefix('plugin_storage') . ' (`type`,`aux`,`data`) VALUES ("instagramfeed", "instagramfeed_cache",' . $_zp_db->quote($cache) . ')';
 		}
-		query($sql);
+		$_zp_db->query($sql);
 	}
 
 	/**
@@ -282,7 +284,8 @@ class instagramFeed {
 	 * @return int
 	 */
 	static function getLastMod() {
-		$lastmod = query_single_row('SELECT data FROM ' . prefix('plugin_storage') . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_lastmod"');
+		global $_zp_db;
+		$lastmod = $_zp_db->querySingleRow('SELECT data FROM ' . $_zp_db->prefix('plugin_storage') . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_lastmod"');
 		if ($lastmod) {
 			return $lastmod['data'];
 		}
@@ -295,14 +298,15 @@ class instagramFeed {
 	 * @param int $lastmod Time (time()) of the last caching
 	 */
 	static function saveLastmod() {
+		global $_zp_db;
 		$haslastmod = instagramfeed::getLastMod();
 		$lastmod = time();
 		if ($haslastmod) {
-			$sql = 'UPDATE ' . prefix('plugin_storage') . ' SET `data` = ' . $lastmod . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_lastmod"';
+			$sql = 'UPDATE ' . $_zp_db->prefix('plugin_storage') . ' SET `data` = ' . $lastmod . ' WHERE `type`="instagramfeed" AND `aux` = "instagramfeed_lastmod"';
 		} else {
-			$sql = 'INSERT INTO ' . prefix('plugin_storage') . ' (`type`,`aux`,`data`) VALUES ("instagramfeed", "instagramfeed_lastmod",' . $lastmod . ')';
+			$sql = 'INSERT INTO ' . $_zp_db->prefix('plugin_storage') . ' (`type`,`aux`,`data`) VALUES ("instagramfeed", "instagramfeed_lastmod",' . $lastmod . ')';
 		}
-		query($sql);
+		$_zp_db->query($sql);
 	}
 
 }
