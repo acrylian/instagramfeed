@@ -1,4 +1,4 @@
-** NOTE: THis plugin is not developed anymore because Instagram basically disabled the feed it used **
+**NOTE: THis plugin is not developed anymore because Instagram basically disabled the feed it used**
 
 # instagramfeed
 A [ZenphotoCMS](http://www.zenphoto.org) plugin to display the latest images from a instagram account. 
